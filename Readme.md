@@ -18,6 +18,7 @@ Arduino projects could be built with any IDE. This template allows you to create
 * gcc-avr
 * avr-libc
 * avrdude
+* miniterm
 
 
 ## Integration into Code::Blocks ##

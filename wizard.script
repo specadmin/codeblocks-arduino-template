@@ -12,6 +12,8 @@
 
 // Global variables
 outputDir <- _T("output");
+startSerialMonitor <- false;
+monitorBaudRate <- "";
 //-----------------------------------------------------------------------------
 function BeginWizard()
 {
@@ -19,6 +21,7 @@ function BeginWizard()
         return;
     Wizard.AddGenericSelectPathPage(_T("ArduinoDir"), _T("The compiler should to know, where to find Arduino core files.\nPlease specify the location of Arduino home directory"), _T("Arduino home directory:"), _T("/usr/lib/arduino"));
     Wizard.AddProjectPathPage();
+    Wizard.AddPage(_T("portSettings"));
 }
 //-----------------------------------------------------------------------------
 function OnLeave_ArduinoDir(fwd)
@@ -27,6 +30,16 @@ function OnLeave_ArduinoDir(fwd)
         return false;
     local dir = Wizard.GetTextControlValue(_T("txtFolder"));
     ArduinoDir <- dir;
+    return true;
+}
+//-----------------------------------------------------------------------------
+function OnLeave_portSettings(fwd)
+{
+    if(!fwd)
+        return false;
+    startSerialMonitor = Wizard.IsCheckboxChecked(_T("checkboxStartTerminal"));
+    if(startSerialMonitor)
+        monitorBaudRate = Wizard.GetTextControlValue(_T("textctrlBaudRate"));
     return true;
 }
 //-----------------------------------------------------------------------------
@@ -78,6 +91,11 @@ function createTarget(project, targetName, MCU, variant, programmer, port, ccfla
     target.AddCommandsAfterBuild(_T("echo \"stty -F $(PORT) 1200\" > $(TARGET_OUTPUT_FILE)"));
     target.AddCommandsAfterBuild(_T("echo \"sleep 1\" >> $(TARGET_OUTPUT_FILE)"));
     target.AddCommandsAfterBuild(_T("echo \"avrdude -DV -c $(PROGRAMMER) -P $(PORT) -b 57600 -p $(MCU) -U flash:w:$(TARGET_OUTPUT_BASENAME).hex:i\" >> $(TARGET_OUTPUT_FILE)"));
+    if(startSerialMonitor)
+    {
+        target.AddCommandsAfterBuild(_T("echo \"sleep 1\" >> $(TARGET_OUTPUT_FILE)"));
+        target.AddCommandsAfterBuild(_T("echo \"miniterm " + port + " " + monitorBaudRate + "\" >> $(TARGET_OUTPUT_FILE)"));
+    }
 }
 //-----------------------------------------------------------------------------
 function SetupProject(project)
