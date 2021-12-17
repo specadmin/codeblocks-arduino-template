@@ -47,6 +47,7 @@ function createTarget(project, targetName, MCU, variant, programmer, port, ccfla
     local target = project.AddBuildTarget(targetName);    
     if(!target)
         return;
+    target.SetCompilerID(_T("avr-gcc"));
     target.SetTargetType(ttConsoleOnly);
     target.SetUseConsoleRunner(false);
     target.SetWorkingDir(_T("$(TARGET_OUTPUT_DIR)"));
