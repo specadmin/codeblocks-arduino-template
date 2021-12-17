@@ -1,0 +1,141 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// Code::Blocks new project wizard script
+//
+// Project: Arduino project
+// Author:  Anton Rezanov <ton@specadmin.ru>
+// Website: https://github.com/specadmin/codeblocks-arduino-template
+//
+// Thanks to Stanley Huang <stanleyhuangyc@gmail.com> for the idea
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// Global variables
+outputDir <- _T("output");
+//-----------------------------------------------------------------------------
+function BeginWizard()
+{
+    if(Wizard.GetWizardType() != wizProject)
+        return;
+    Wizard.AddGenericSelectPathPage(_T("ArduinoDir"), _T("The compiler should to know, where to find Arduino core files.\nPlease specify the location of Arduino home directory"), _T("Arduino home directory:"), _T("/usr/lib/arduino"));
+    Wizard.AddProjectPathPage();
+}
+//-----------------------------------------------------------------------------
+function OnLeave_ArduinoDir(fwd)
+{
+    if(!fwd)
+        return false;
+    local dir = Wizard.GetTextControlValue(_T("txtFolder"));
+    ArduinoDir <- dir;
+    return true;
+}
+//-----------------------------------------------------------------------------
+function GetFilesDir()
+{
+    return _T("arduino/files");
+}
+//-----------------------------------------------------------------------------
+function removeFile(project, filename)
+{
+    local file = project.GetFileByFilename(filename, true, false);
+    if(file)
+        project.RemoveFile(file);
+}
+//-----------------------------------------------------------------------------
+function createTarget(project, targetName, MCU, variant, programmer, port, ccflag1, ccflag2 = null, ccflag3 = null, ccflag4 = null)
+{
+    local target = project.AddBuildTarget(targetName);    
+    if(!target)
+        return;
+    target.SetTargetType(ttConsoleOnly);
+    target.SetUseConsoleRunner(false);
+    target.SetWorkingDir(_T("$(TARGET_OUTPUT_DIR)"));
+    target.SetTargetFilenameGenerationPolicy(tgfpPlatformDefault, tgfpNone);    
+    for(local i = 0; i < project.GetFilesCount(); i++)
+    {
+        project.GetFile(i).AddBuildTarget(targetName);
+    }        
+    targetName.Replace(_T(" "), _T("_"), true);
+    local targetDir = outputDir + wxFILE_SEP_PATH + targetName + wxFILE_SEP_PATH;
+    local execExtension = _T("");
+    if(PLATFORM == PLATFORM_MSW)
+    {
+        // Windows host platform need executable file extension
+        execExtension = _T(".bat");
+    }
+    target.SetOutputFilename(targetDir + _T("$(PROJECTNAME)") + execExtension);
+    target.SetObjectOutput(targetDir + _T("obj"));
+    target.AddIncludeDir(_T("$(ARDUINO_DIR)/hardware/arduino/avr/variants/" + variant));
+    target.SetVar(_T("MCU"), MCU, false);
+    target.SetVar(_T("PROGRAMMER"), programmer, false);
+    target.SetVar(_T("PORT"), port, false);
+    if(ccflag1)  target.AddCompilerOption(ccflag1);
+    if(ccflag2)  target.AddCompilerOption(ccflag2);
+    if(ccflag3)  target.AddCompilerOption(ccflag3);
+    if(ccflag4)  target.AddCompilerOption(ccflag4);    
+    target.AddCommandsAfterBuild(_T("mv $(TARGET_OUTPUT_FILE) $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).elf"));
+    target.AddCommandsAfterBuild(_T("echo \"stty -F $(PORT) 1200\" > $(TARGET_OUTPUT_FILE)"));
+    target.AddCommandsAfterBuild(_T("echo \"sleep 1\" >> $(TARGET_OUTPUT_FILE)"));
+    target.AddCommandsAfterBuild(_T("echo \"avrdude -DV -c $(PROGRAMMER) -P $(PORT) -b 57600 -p $(MCU) -U flash:w:$(TARGET_OUTPUT_BASENAME).hex:i\" >> $(TARGET_OUTPUT_FILE)"));
+}
+//-----------------------------------------------------------------------------
+function SetupProject(project)
+{    
+    project.SetVar(_T("ARDUINO_DIR"), ArduinoDir, false);
+
+    // Remove extra files
+    removeFile(project, _T(".gitignore"));
+    
+    // Compiller options
+    project.AddCompilerOption(_T("-g"));                // produce debug symbols
+    project.AddCompilerOption(_T("-std=c++11"));        // follow the C++11 ISO language standart    
+    project.AddCompilerOption(_T("-Wall"));             // enable all compiller warnings
+    project.AddCompilerOption(_T("-Wextra"));           // enable extra compiller warnings
+    project.AddCompilerOption(_T("-Os"));               // size optimization
+    project.AddCompilerOption(_T("-flto"));             // link-time optimization
+    project.AddCompilerOption(_T("-fno-threadsafe-statics")); // disable guard variables
+    project.AddCompilerOption(_T("-save-temps=obj"));   // save preprocessor files in obj folder
+    project.AddIncludeDir(_T("$(ARDUINO_DIR)/hardware/arduino/avr/cores/arduino"));
+    project.AddIncludeDir(_T("include"));
+    project.AddIncludeDir(_T("lib"));
+
+    // Linker options
+    project.AddLinkerOption(_T("-mmcu=$(MCU)"));
+    project.AddLinkerOption(_T("-Wl,-Map=\"$(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).map\""));
+    project.AddLinkerOption(_T("-Wl,--cref"));
+
+    // Definitions
+    project.AddCompilerOption(_T("-DF_CPU=16000000L"));
+    project.AddCompilerOption(_T("-DARDUINO=103"));
+
+    // Pre/post build steps
+    if(PLATFORM == PLATFORM_MSW)
+    {
+        // Windows host platform
+        // TODO: windows commands
+    }
+    else
+    {
+        // WARNING! Project's steps are beeing processed AFTER target's steps
+        project.AddCommandsAfterBuild(_T("chmod +x $(TARGET_OUTPUT_FILE"));
+        project.AddCommandsAfterBuild(_T("avr-objdump -dS $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).elf > $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).asm"));
+        project.AddCommandsAfterBuild(_T("avr-strip --strip-debug -R .comment $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).elf"));
+        project.AddCommandsAfterBuild(_T("avr-objdump -xC $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).elf > $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).dump"));
+        project.AddCommandsAfterBuild(_T("avr-objcopy -R .eeprom -R .fuse -R .lock -R .signature -O ihex $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).elf $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).hex"));
+        project.AddCommandsAfterBuild(_T("avr-size -C --mcu=$(MCU) -d $(TARGET_OUTPUT_DIR)$(TARGET_OUTPUT_BASENAME).elf"));
+    }
+    
+    // remove all existing (default) targets (usually named 'Debug' and 'Release')
+    local result = true;
+    while(result)
+    {
+        result = project.RemoveBuildTarget(0);
+    }
+
+    // Creatte Arduino targets
+    //----------------------- Target Name ----------------- MCU ----------- Pins Variant -------- Programmer -------- Programmer Port ------- Defines...
+    createTarget(project, _T("Arduino Micro"),      _T("atmega32u4"),       _T("micro"),        _T("avr911"),       _T("/dev/ttyACM0"),      _T("-D__AVR_ATmega32U4__"),     _T("-DUSB_VID=0x2341"),     _T("-DUSB_PID=0x0037"));
+
+    return true;
+}
+
