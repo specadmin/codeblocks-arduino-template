@@ -83,6 +83,29 @@ function SetupProject(project)
 {    
     project.SetVar(_T("ARDUINO_DIR"), ArduinoDir, false);
 
+    // Source files
+    project.AddFile(0, _T("sketch.cpp"));
+    project.AddFile(0, _T("core/_main.cpp"));
+    project.AddFile(0, _T("core/_CDC.cpp"));
+    project.AddFile(0, _T("core/_HardwareSerial.cpp"));
+    project.AddFile(0, _T("core/_abi.cpp"));
+    project.AddFile(0, _T("core/_hooks.c"));
+    project.AddFile(0, _T("core/_new.cpp"));
+    project.AddFile(0, _T("core/_Print.cpp"));
+    project.AddFile(0, _T("core/_Stream.cpp"));
+    project.AddFile(0, _T("core/_Tone.cpp"));
+    project.AddFile(0, _T("core/_USBCore.cpp"));
+    project.AddFile(0, _T("core/_PluggableUSB.cpp"));
+    project.AddFile(0, _T("core/_WInterrupts.c")); 
+    project.AddFile(0, _T("core/_IPAddress.cpp"));
+    project.AddFile(0, _T("core/_WMath.cpp"));
+    project.AddFile(0, _T("core/_WString.cpp"));
+    project.AddFile(0, _T("core/_wiring.c"));
+    project.AddFile(0, _T("core/_wiring_digital.c"));
+    project.AddFile(0, _T("core/_wiring_analog.c"));
+    project.AddFile(0, _T("core/_wiring_pulse.c"));
+    project.AddFile(0, _T("core/_wiring_shift.c"));
+
     // Remove extra files
     removeFile(project, _T(".gitignore"));
     
