@@ -106,6 +106,7 @@ function SetupProject(project)
     removeFile(project, _T(".gitignore"));
     
     // Compiller options
+    project.SetCompilerID(_T("avr-gcc"));
     project.AddCompilerOption(_T("-g"));                // produce debug symbols
     project.AddCompilerOption(_T("-std=c++11"));        // follow the C++11 ISO language standart    
     project.AddCompilerOption(_T("-Wall"));             // enable all compiller warnings
